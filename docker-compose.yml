@@ -1,0 +1,64 @@
+version: '3'
+services:
+  db:
+    image: postgres:9.5
+    ports:
+      - "5432:5432"
+    environment:
+      TZ: America/Sao_Paulo
+      PGTZ: America/Sao_Paulo
+      POSTGRES_DB: authdocs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgresql:/docker-entrypoint-initdb.d
+    networks:
+      - postgres-network
+
+  app:
+    build: .
+    volumes:
+      - ./:/api/
+    working_dir: /api/
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "authdocs:127.0.0.1"
+    links:
+      - db
+    environment:
+      - TZ=America/Sao_Paulo
+      - PGPASSWORD=postgres
+      - PGUSER=postgres
+      - PGDATABASE=authdocs
+      - PGHOST=db
+      - PGPORT=5432
+    depends_on:
+      - db
+    command: >
+        bash -c "npm install &&
+        cp ./ormconfig.json.dist ./ormconfig.json &&
+        npm start &&
+        tail -f /dev/null"
+    networks:
+      - postgres-network
+        
+  pgsql:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "pgsql@authdocs.com.br"
+      PGADMIN_DEFAULT_PASSWORD: "postgres"
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - postgres-network
+
+volumes:
+  postgresql: {}
+
+networks: 
+  postgres-network:
+    driver: bridge
+
